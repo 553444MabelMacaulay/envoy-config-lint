@@ -29,6 +29,17 @@ class ParseResult:
 KEY_PATTERN = re.compile(r'^(?P<export>export\s+)?(?P<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?P<value>.*)$')
 
 
+def _strip_inline_comment(value: str) -> str:
+    """Strip an inline comment from an unquoted value.
+
+    Only strips comments from values that are not wrapped in quotes,
+    since a '#' inside a quoted string is not a comment delimiter.
+    """
+    if '#' in value and not value.startswith(('"', "'")):
+        value = value.split('#', 1)[0].strip()
+    return value
+
+
 def parse_env_file(content: str) -> ParseResult:
     """Parse the content of a .env file into structured entries."""
     result = ParseResult()
@@ -59,11 +70,8 @@ def parse_env_file(content: str) -> ParseResult:
         match = KEY_PATTERN.match(stripped)
         if match:
             key = match.group('key')
-            value = match.group('value').strip()
+            value = _strip_inline_comment(match.group('value').strip())
             has_export = bool(match.group('export'))
-            # Strip inline comments
-            if '#' in value and not value.startswith(('"', "'")):
-                value = value.split('#', 1)[0].strip()
             result.entries.append(EnvEntry(
                 line_number=line_number,
                 key=key,
