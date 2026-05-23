@@ -28,6 +28,21 @@ class LintReport:
     def has_errors(self) -> bool:
         return self.error_count > 0
 
+    def summary(self) -> str:
+        """Return a human-readable one-line summary of the report."""
+        return (
+            f"{self.file_path}: "
+            f"{self.error_count} error(s), {self.warning_count} warning(s)"
+        )
+
+
+def _extract_line_number(error_message: str) -> int:
+    """Extract a line number from a parse error message, defaulting to 0."""
+    try:
+        return int(error_message.split('Line ')[1].split(':')[0])
+    except (IndexError, ValueError):
+        return 0
+
 
 def lint_content(content: str, file_path: str = '<stdin>') -> LintReport:
     """Lint raw .env content and return a report."""
@@ -36,9 +51,8 @@ def lint_content(content: str, file_path: str = '<stdin>') -> LintReport:
 
     # Surface parse errors as lint issues
     for err in parse_result.errors:
-        line_num = int(err.split('Line ')[1].split(':')[0]) if 'Line ' in err else 0
         issues.append(LintIssue(
-            line_number=line_num,
+            line_number=_extract_line_number(err) if 'Line ' in err else 0,
             rule_id='E000',
             severity='error',
             message=err,
